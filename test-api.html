@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test API Backend</title>
+</head>
+<body>
+    <h1>Test API Backend</h1>
+    <div id="results"></div>
+    
+    <script>
+        const API_URL = 'https://backend-qhse.vercel.app';
+        
+        async function testAPI() {
+            const results = document.getElementById('results');
+            
+            // Test 1: Route de base
+            try {
+                console.log('Test 1: Route de base');
+                const response1 = await fetch(`${API_URL}/`);
+                const text1 = await response1.text();
+                console.log('Response 1:', text1);
+                results.innerHTML += `<h3>Test 1 - Route de base:</h3><pre>${text1}</pre>`;
+            } catch (error) {
+                console.error('Error 1:', error);
+                results.innerHTML += `<h3>Test 1 - Erreur:</h3><pre>${error.message}</pre>`;
+            }
+            
+            // Test 2: Route API test
+            try {
+                console.log('Test 2: Route API test');
+                const response2 = await fetch(`${API_URL}/api/test`);
+                const text2 = await response2.text();
+                console.log('Response 2:', text2);
+                results.innerHTML += `<h3>Test 2 - API test:</h3><pre>${text2}</pre>`;
+            } catch (error) {
+                console.error('Error 2:', error);
+                results.innerHTML += `<h3>Test 2 - Erreur:</h3><pre>${error.message}</pre>`;
+            }
+            
+            // Test 3: Route dashboard
+            try {
+                console.log('Test 3: Route dashboard');
+                const response3 = await fetch(`${API_URL}/api/dashboard`);
+                const text3 = await response3.text();
+                console.log('Response 3:', text3);
+                results.innerHTML += `<h3>Test 3 - Dashboard:</h3><pre>${text3}</pre>`;
+            } catch (error) {
+                console.error('Error 3:', error);
+                results.innerHTML += `<h3>Test 3 - Erreur:</h3><pre>${error.message}</pre>`;
+            }
+        }
+        
+        // Lancer les tests
+        testAPI();
+    </script>
+</body>
+</html>
