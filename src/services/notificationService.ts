@@ -1,5 +1,6 @@
 // Service pour gérer les notifications basées sur des données réelles
 import { Notification } from '../components/common/NotificationSystem';
+import { shouldUseMockData, getApiUrl } from '../config/api';
 
 interface NotificationRule {
   id: string;
@@ -20,7 +21,34 @@ class NotificationService {
   }
 
   private getApiUrl(): string {
-    return (import.meta as any).env?.VITE_API_URL || 'https://backend-qhse.vercel.app';
+    return getApiUrl();
+  }
+
+  // Données mockées pour les notifications
+  private getMockData(): any {
+    return {
+      laboratoire: {
+        echantillons: { total: 25, enAttente: 5, enCours: 8, termines: 12, conformes: 10, nonConformes: 2 },
+        analyses: { total: 15, planifiees: 3, enCours: 4, terminees: 8 },
+        plansControle: { total: 6, actifs: 4, enAttente: 2 }
+      },
+      qualite: {
+        matieresPremieres: { total: 45, conformes: 40, nonConformes: 3, enAttente: 2 },
+        controlesQualite: { total: 12, planifies: 2, enCours: 3, termines: 7 },
+        nonConformites: { total: 8, critiques: 1, elevees: 2, moderees: 3, faibles: 2 },
+        decisionsQualite: { total: 15, enAttente: 4, validees: 9, rejetees: 2 },
+        audits: { total: 6, planifies: 1, enCours: 2, termines: 3 },
+        conformite: { score: 85, evolution: 5 }
+      },
+      hse: {
+        hygiene: { total: 20, conformes: 18, nonConformes: 1, enAttente: 1 },
+        epi: { total: 50, enStock: 45, seuilAlerte: 5, manquants: 0 },
+        produitsChimiques: { total: 30, enStock: 28, seuilAlerte: 2, manquants: 0 },
+        incidents: { total: 5, critiques: 0, eleves: 1, moderes: 2, faibles: 2 },
+        risques: { total: 12, tresEleves: 1, eleves: 2, moderes: 4, faibles: 5 },
+        formations: { total: 18, planifiees: 3, enCours: 2, terminees: 13 }
+      }
+    };
   }
 
   // Initialiser les règles de notification
@@ -207,6 +235,12 @@ class NotificationService {
 
   // Récupérer les données depuis l'API
   private async fetchData(): Promise<any> {
+    // Utiliser des données mockées si l'API n'est pas disponible
+    if (shouldUseMockData()) {
+      console.log('🔄 Mode mock activé - utilisation des données mockées pour les notifications');
+      return this.getMockData();
+    }
+
     try {
       const token = localStorage.getItem('qhse-token')?.replace(/^"|"$/g, '');
       const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};

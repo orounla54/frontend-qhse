@@ -1,4 +1,5 @@
 // Service pour récupérer les données réelles du dashboard
+import { shouldUseMockData, getApiUrl } from '../config/api';
 
 export interface DashboardData {
   laboratoire: {
@@ -114,7 +115,7 @@ export interface RecentActivity {
 
 class DashboardService {
   private getApiUrl(): string {
-    return (import.meta as any).env?.VITE_API_URL || 'https://backend-qhse.vercel.app';
+    return getApiUrl();
   }
 
   private getAuthHeaders(): Record<string, string> {
@@ -122,8 +123,63 @@ class DashboardService {
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
+  // Données mockées pour le laboratoire
+  private getMockLaboratoireData(): DashboardData['laboratoire'] {
+    return {
+      echantillons: { 
+        total: 25, 
+        enAttente: 5, 
+        enCours: 8, 
+        termines: 12, 
+        conformes: 10, 
+        nonConformes: 2 
+      },
+      analyses: { 
+        total: 15, 
+        planifiees: 3, 
+        enCours: 4, 
+        terminees: 8 
+      },
+      plansControle: { 
+        total: 6, 
+        actifs: 4, 
+        enAttente: 2 
+      }
+    };
+  }
+
+  // Données mockées pour la qualité
+  private getMockQualiteData(): DashboardData['qualite'] {
+    return {
+      matieresPremieres: { total: 45, conformes: 40, nonConformes: 3, enAttente: 2 },
+      controlesQualite: { total: 12, planifies: 2, enCours: 3, termines: 7 },
+      nonConformites: { total: 8, critiques: 1, elevees: 2, moderees: 3, faibles: 2 },
+      decisionsQualite: { total: 15, enAttente: 4, validees: 9, rejetees: 2 },
+      audits: { total: 6, planifies: 1, enCours: 2, termines: 3 },
+      conformite: { score: 85, evolution: 5 }
+    };
+  }
+
+  // Données mockées pour HSE
+  private getMockHSEData(): DashboardData['hse'] {
+    return {
+      hygiene: { total: 20, conformes: 18, nonConformes: 1, enAttente: 1 },
+      epi: { total: 50, enStock: 45, seuilAlerte: 5, manquants: 0 },
+      produitsChimiques: { total: 30, enStock: 28, seuilAlerte: 2, manquants: 0 },
+      incidents: { total: 5, critiques: 0, eleves: 1, moderes: 2, faibles: 2 },
+      risques: { total: 12, tresEleves: 1, eleves: 2, moderes: 4, faibles: 5 },
+      formations: { total: 18, planifiees: 3, enCours: 2, terminees: 13 }
+    };
+  }
+
   // Récupérer les données du laboratoire
   async getLaboratoireData(): Promise<DashboardData['laboratoire']> {
+    // Utiliser les données mockées si l'API n'est pas disponible
+    if (shouldUseMockData()) {
+      console.log('🔄 Mode mock activé - utilisation des données mockées pour le laboratoire');
+      return this.getMockLaboratoireData();
+    }
+
     try {
       const response = await fetch(`${this.getApiUrl()}/api/dashboard/laboratoire`, {
         headers: {
@@ -193,6 +249,12 @@ class DashboardService {
 
   // Récupérer les données de qualité
   async getQualiteData(): Promise<DashboardData['qualite']> {
+    // Utiliser les données mockées si l'API n'est pas disponible
+    if (shouldUseMockData()) {
+      console.log('🔄 Mode mock activé - utilisation des données mockées pour la qualité');
+      return this.getMockQualiteData();
+    }
+
     try {
       const response = await fetch(`${this.getApiUrl()}/api/dashboard/qualite`, {
         headers: {
@@ -265,6 +327,12 @@ class DashboardService {
 
   // Récupérer les données HSE
   async getHSEData(): Promise<DashboardData['hse']> {
+    // Utiliser les données mockées si l'API n'est pas disponible
+    if (shouldUseMockData()) {
+      console.log('🔄 Mode mock activé - utilisation des données mockées pour HSE');
+      return this.getMockHSEData();
+    }
+
     try {
       const response = await fetch(`${this.getApiUrl()}/api/dashboard/hse`, {
         headers: {
