@@ -14,7 +14,7 @@ import {
 } from '../types';
 
 // Configuration de l'API
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://your-backend-qhse.herokuapp.com';
+const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://backend-qhse.vercel.app';
 
 const api = axios.create({
   baseURL: `${API_BASE_URL}/api/qhse`,
