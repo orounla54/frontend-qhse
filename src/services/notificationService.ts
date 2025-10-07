@@ -19,6 +19,10 @@ class NotificationService {
     this.initializeRules();
   }
 
+  private getApiUrl(): string {
+    return (import.meta as any).env?.VITE_API_URL || 'https://backend-qhse.vercel.app';
+  }
+
   // Initialiser les règles de notification
   private initializeRules() {
     this.rules = [
@@ -207,7 +211,7 @@ class NotificationService {
       const token = localStorage.getItem('qhse-token')?.replace(/^"|"$/g, '');
       const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const response = await fetch('/api/dashboard', {
+      const response = await fetch(`${this.getApiUrl()}/api/dashboard`, {
         headers: {
           'Content-Type': 'application/json',
           ...authHeaders

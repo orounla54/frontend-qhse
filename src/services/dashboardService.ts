@@ -113,6 +113,10 @@ export interface RecentActivity {
 }
 
 class DashboardService {
+  private getApiUrl(): string {
+    return (import.meta as any).env?.VITE_API_URL || 'https://backend-qhse.vercel.app';
+  }
+
   private getAuthHeaders(): Record<string, string> {
     const token = localStorage.getItem('qhse-token')?.replace(/^"|"$/g, '');
     return token ? { Authorization: `Bearer ${token}` } : {};
@@ -121,7 +125,7 @@ class DashboardService {
   // Récupérer les données du laboratoire
   async getLaboratoireData(): Promise<DashboardData['laboratoire']> {
     try {
-      const response = await fetch('/api/dashboard/laboratoire', {
+      const response = await fetch(`${this.getApiUrl()}/api/dashboard/laboratoire`, {
         headers: {
           'Content-Type': 'application/json',
           ...this.getAuthHeaders()
@@ -167,7 +171,7 @@ class DashboardService {
   // Récupérer les données de qualité
   async getQualiteData(): Promise<DashboardData['qualite']> {
     try {
-      const response = await fetch('/api/dashboard/qualite', {
+      const response = await fetch(`${this.getApiUrl()}/api/dashboard/qualite`, {
         headers: {
           'Content-Type': 'application/json',
           ...this.getAuthHeaders()
@@ -232,7 +236,7 @@ class DashboardService {
   // Récupérer les données HSE
   async getHSEData(): Promise<DashboardData['hse']> {
     try {
-      const response = await fetch('/api/dashboard/hse', {
+      const response = await fetch(`${this.getApiUrl()}/api/dashboard/hse`, {
         headers: {
           'Content-Type': 'application/json',
           ...this.getAuthHeaders()
@@ -300,7 +304,7 @@ class DashboardService {
   // Récupérer les activités récentes
   async getRecentActivities(): Promise<RecentActivity[]> {
     try {
-      const response = await fetch('/api/activities/recent', {
+      const response = await fetch(`${this.getApiUrl()}/api/activities/recent`, {
         headers: {
           'Content-Type': 'application/json',
           ...this.getAuthHeaders()
@@ -321,7 +325,7 @@ class DashboardService {
   // Récupérer toutes les données du dashboard
   async getAllDashboardData(): Promise<DashboardData> {
     try {
-      const response = await fetch('/api/dashboard', {
+      const response = await fetch(`${this.getApiUrl()}/api/dashboard`, {
         headers: {
           'Content-Type': 'application/json',
           ...this.getAuthHeaders()
