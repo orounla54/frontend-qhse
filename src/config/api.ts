@@ -3,8 +3,8 @@ export const API_CONFIG = {
   // Mode développement - utilise des données mockées
   MOCK_MODE: false,
   
-  // URL de l'API backend
-  BASE_URL: (import.meta as any).env?.VITE_API_URL || 'https://backend-qhse.vercel.app',
+  // URL de l'API backend - Forcer l'URL qui fonctionne
+  BASE_URL: 'https://backend-qhse.vercel.app',
   
   // Timeout pour les requêtes
   TIMEOUT: 5000,

@@ -13,8 +13,8 @@ import {
   ConformiteFormData
 } from '../types';
 
-// Configuration de l'API unifiée
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://backend-qhse.vercel.app';
+// Configuration de l'API unifiée - Forcer l'URL qui fonctionne
+const API_BASE_URL = 'https://backend-qhse.vercel.app';
 
 const api = axios.create({
   baseURL: `${API_BASE_URL}/api/qhse`,
