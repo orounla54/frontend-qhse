@@ -322,16 +322,7 @@ const Laboratoire: React.FC<LaboratoireProps> = ({ activeTab: initialTab = 'echa
         mesuresInitiales: data.mesuresInitiales
       };
 
-      const token = localStorage.getItem('qhse-token')?.replace(/^"|"$/g, '');
-      const res = await fetch('/api/laboratoire/echantillons', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) throw new Error('Création échouée');
+      await echantillonService.create(payload);
       setIsEchantillonModalOpen(false);
       setEchantillonInitial(null);
       setEchantillonMode('create');
@@ -368,15 +359,7 @@ const Laboratoire: React.FC<LaboratoireProps> = ({ activeTab: initialTab = 'echa
         }
       };
 
-      const res = await fetch(`/api/laboratoire/echantillons/${echantillonInitial._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) throw new Error('Mise à jour échouée');
+      await echantillonService.update(echantillonInitial._id, payload);
       setIsEchantillonModalOpen(false);
       setEchantillonInitial(null);
       setEchantillonMode('create');
@@ -432,16 +415,7 @@ const Laboratoire: React.FC<LaboratoireProps> = ({ activeTab: initialTab = 'echa
         commentaire: data.commentaire || ''
       };
 
-      const token = localStorage.getItem('qhse-token')?.replace(/^"|"$/g, '');
-      const res = await fetch('/api/laboratoire/analyses', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) throw new Error('Création échouée');
+      await analyseService.create(payload);
       setIsAnalyseModalOpen(false);
       setAnalyseInitial(null);
       setAnalyseMode('create');
@@ -475,15 +449,7 @@ const Laboratoire: React.FC<LaboratoireProps> = ({ activeTab: initialTab = 'echa
           : {})
       };
 
-      const res = await fetch(`/api/laboratoire/analyses/${analyseInitial._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) throw new Error('Mise à jour échouée');
+      await analyseService.update(analyseInitial._id, payload);
       setIsAnalyseModalOpen(false);
       setAnalyseInitial(null);
       setAnalyseMode('create');
@@ -506,19 +472,7 @@ const Laboratoire: React.FC<LaboratoireProps> = ({ activeTab: initialTab = 'echa
         // Le responsable sera assigné automatiquement par le backend depuis req.user
       };
       
-      const res = await fetch('/api/laboratoire/plans-controle', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify(payload)
-      });
-      
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(`Création échouée: ${errorData.message || 'Erreur inconnue'}`);
-      }
+      await planControleService.create(payload);
       
       setIsPlanControleModalOpen(false);
       setPlanInitial(null);
@@ -555,15 +509,7 @@ const Laboratoire: React.FC<LaboratoireProps> = ({ activeTab: initialTab = 'echa
         dateRevision: data.dateRevision ?? planInitial.dateRevision
       };
 
-      const res = await fetch(`/api/laboratoire/plans-controle/${planInitial._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) throw new Error('Mise à jour échouée');
+      await planControleService.update(planInitial._id, payload);
       setIsPlanControleModalOpen(false);
       setPlanInitial(null);
       setPlanMode('create');
