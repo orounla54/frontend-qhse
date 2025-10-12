@@ -17,7 +17,7 @@ import {
 const API_BASE_URL = 'https://backend-qhse.vercel.app';
 
 const api = axios.create({
-  baseURL: `${API_BASE_URL}/api/qhse`,
+  baseURL: `${API_BASE_URL}/api`,
   headers: {
     'Content-Type': 'application/json',
   },

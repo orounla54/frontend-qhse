@@ -5,6 +5,7 @@ import {
   ModalPlanControle
 } from '../components/features';
 import StatistiquesLaboratoire from '../components/features/StatistiquesLaboratoire';
+import { echantillonService, analyseService, planControleService } from '../services/laboratoireService';
 import { 
   Microscope, 
   FlaskConical, 
@@ -233,19 +234,16 @@ const Laboratoire: React.FC<LaboratoireProps> = ({ activeTab: initialTab = 'echa
       };
 
       if (activeTab === 'echantillons') {
-        const response = await fetch('/api/laboratoire/echantillons', { headers, signal });
-        const data = await response.json();
-        setEchantillons(data.echantillons || []);
+        const response = await echantillonService.getAll();
+        setEchantillons(response.data.echantillons || []);
         setEchantillonsPage(1);
       } else if (activeTab === 'analyses') {
-        const response = await fetch('/api/laboratoire/analyses', { headers, signal });
-        const data = await response.json();
-        setAnalyses(data.analyses || []);
+        const response = await analyseService.getAll();
+        setAnalyses(response.data.analyses || []);
         setAnalysesPage(1);
       } else if (activeTab === 'plans-controle') {
-        const response = await fetch('/api/laboratoire/plans-controle', { headers, signal });
-        const data = await response.json();
-        setPlans(data.plans || data.plansControle || []);
+        const response = await planControleService.getAll();
+        setPlans(response.data.plans || response.data.plansControle || []);
         setPlansPage(1);
       }
     } catch (error) {
