@@ -14,6 +14,13 @@ import {
 } from '../components/features';
 import StatistiquesQualite from '../components/features/StatistiquesQualite';
 import { 
+  matierePremiereService, 
+  controleQualiteService, 
+  nonConformiteService,
+  auditQualiteService,
+  decisionQualiteService
+} from '../services/qualiteService';
+import { 
   CheckCircle, 
   AlertTriangle, 
   Package, 
@@ -385,18 +392,7 @@ const Qualite: React.FC<QualiteProps> = ({ activeTab: initialTab = 'matieres-pre
         ]
       };
 
-      const res = await fetch('/api/qualite/matieres-premieres', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || 'Création échouée');
-      }
+      await matierePremiereService.create(payload);
       addNotification('success', 'Matière première créée avec succès');
       setIsMpModalOpen(false);
       await loadData();
