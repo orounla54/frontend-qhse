@@ -1,7 +1,7 @@
 // Configuration de l'API
 export const API_CONFIG = {
   // Mode développement - utilise des données mockées
-  MOCK_MODE: true,
+  MOCK_MODE: false,
   
   // URL de l'API backend
   BASE_URL: (import.meta as any).env?.VITE_API_URL || 'https://backend-qhse.vercel.app',
@@ -40,5 +40,10 @@ export const getApiUrl = (): string => {
 
 // Fonction pour vérifier si on doit utiliser les données mockées
 export const shouldUseMockData = (): boolean => {
+  // Forcer le mode non-mock en production
+  if (import.meta.env.PROD) {
+    return false;
+  }
   return API_CONFIG.MOCK_MODE;
 };
+
