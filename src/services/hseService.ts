@@ -73,9 +73,29 @@ export const hygieneService = {
   delete: (id: string) => api.delete(`/hygiene/${id}`),
 };
 
+// Services pour les incidents
+export const incidentService = {
+  getAll: (params?: any) => api.get('/incidents', { params }),
+  getById: (id: string) => api.get(`/incidents/${id}`),
+  create: (data: any) => api.post('/incidents', data),
+  update: (id: string, data: any) => api.put(`/incidents/${id}`, data),
+  delete: (id: string) => api.delete(`/incidents/${id}`),
+};
+
+// Services pour les risques
+export const risqueService = {
+  getAll: (params?: any) => api.get('/risques', { params }),
+  getById: (id: string) => api.get(`/risques/${id}`),
+  create: (data: any) => api.post('/risques', data),
+  update: (id: string, data: any) => api.put(`/risques/${id}`, data),
+  delete: (id: string) => api.delete(`/risques/${id}`),
+};
+
 // Services pour les statistiques HSE
 export const hseStatsService = {
   getStats: (periode?: string) => api.get('/stats', { params: { periode } }),
 };
 
 export default api;
+
+

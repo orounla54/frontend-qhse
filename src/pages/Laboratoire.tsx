@@ -226,12 +226,6 @@ const Laboratoire: React.FC<LaboratoireProps> = ({ activeTab: initialTab = 'echa
         abortRef.current.abort();
       }
       abortRef.current = new AbortController();
-      const { signal } = abortRef.current;
-      const token = localStorage.getItem('qhse-token')?.replace(/^"|"$/g, '');
-      const headers = {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
-      };
 
       if (activeTab === 'echantillons') {
         const response = await echantillonService.getAll();
@@ -242,9 +236,21 @@ const Laboratoire: React.FC<LaboratoireProps> = ({ activeTab: initialTab = 'echa
         setAnalyses(response.data.analyses || []);
         setAnalysesPage(1);
       } else if (activeTab === 'plans-controle') {
-        const response = await planControleService.getAll();
-        setPlans(response.data.plans || response.data.plansControle || []);
-        setPlansPage(1);
+        try {
+          const response = await planControleService.getAll();
+          setPlans(response.data.plans || response.data.plansControle || []);
+          setPlansPage(1);
+        } catch (planError: any) {
+          console.error('Error loading plans de controle:', planError);
+          console.error('Error details:', planError.response?.data);
+          // Set empty array if error, don't throw
+          setPlans([]);
+          setPlansPage(1);
+          // Show user-friendly message for deployment issues
+          if (planError.response?.status === 500) {
+            console.warn('Backend deployment in progress. Plans de contrôle will be available shortly.');
+          }
+        }
       }
     } catch (error) {
       if ((error as any)?.name !== 'AbortError') {
@@ -316,9 +322,8 @@ const Laboratoire: React.FC<LaboratoireProps> = ({ activeTab: initialTab = 'echa
         numeroLot: data.numeroLot,
         produit: data.produit,
         typeEchantillon: data.typeEchantillon,
-        prelevement: {
-          date: data.prelevement?.date
-        },
+        prelevement: data.prelevement,
+        resultats: data.resultats,
         mesuresInitiales: data.mesuresInitiales
       };
 
@@ -335,7 +340,6 @@ const Laboratoire: React.FC<LaboratoireProps> = ({ activeTab: initialTab = 'echa
   const updateEchantillon = async (data: any) => {
     try {
       if (!echantillonInitial?._id) return;
-      const token = localStorage.getItem('qhse-token')?.replace(/^"|"$/g, '');
       const payload = {
         numero: data.numero ?? echantillonInitial.numero,
         numeroLot: data.numeroLot ?? echantillonInitial.numeroLot,
@@ -379,26 +383,23 @@ const Laboratoire: React.FC<LaboratoireProps> = ({ activeTab: initialTab = 'echa
 
       // Si non trouvé en mémoire, tenter une recherche côté API par numeroLot puis filtrer par numero
       if (!matchedEchantillon) {
-        const token = localStorage.getItem('qhse-token')?.replace(/^"|"$/g, '');
-        const headers = {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        };
-        const resp = await fetch(`/api/laboratoire/echantillons?numeroLot=${encodeURIComponent(data.echantillonNumeroLot || '')}`, { headers });
-        if (resp.ok) {
-          const payload = await resp.json();
-          const fromApi = (payload?.echantillons || []).find((e: any) => e.numero === data.echantillonNumero);
+        try {
+          const resp = await echantillonService.getAll({ numeroLot: data.echantillonNumeroLot || '' });
+          const fromApi = (resp.data?.echantillons || []).find((e: any) => e.numero === data.echantillonNumero);
           if (fromApi) {
             matchedEchantillon = fromApi;
           }
+        } catch (error) {
+          console.error('Erreur lors de la recherche de l\'échantillon:', error);
         }
       }
 
       if (!matchedEchantillon) {
-        throw new Error("Échantillon introuvable. Créez l'échantillon d'abord ou vérifiez numéro/lot.");
+        alert("Échantillon introuvable. Créez l'échantillon d'abord ou vérifiez numéro/lot.");
+        return;
       }
 
-      const payload = {
+      const payload: any = {
         numero: data.numero,
         nom: data.nom,
         type: data.type,
@@ -406,48 +407,63 @@ const Laboratoire: React.FC<LaboratoireProps> = ({ activeTab: initialTab = 'echa
         statut: data.statut,
         datePlanification: data.datePlanification,
         echantillon: matchedEchantillon._id,
-        ...(data.valeur || data.unite ? {
-          resultats: {
-            ...(data.valeur ? { valeur: parseFloat(data.valeur) } : {}),
-            ...(data.unite ? { unite: data.unite } : {})
-          }
-        } : {}),
         commentaire: data.commentaire || ''
       };
+
+      // Add resultats only if we have values
+      if (data.valeur || data.unite) {
+        payload.resultats = {};
+        if (data.valeur) {
+          payload.resultats.valeur = parseFloat(data.valeur);
+        }
+        if (data.unite) {
+          payload.resultats.unite = data.unite;
+        }
+      }
 
       await analyseService.create(payload);
       setIsAnalyseModalOpen(false);
       setAnalyseInitial(null);
       setAnalyseMode('create');
       await loadData();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      alert(`Erreur lors de la création de l'analyse: ${e.message || 'Erreur inconnue'}`);
     }
   };
 
   const updateAnalyse = async (data: any) => {
     try {
       if (!analyseInitial?._id) return;
-      const token = localStorage.getItem('qhse-token')?.replace(/^"|"$/g, '');
-      const payload = {
+      
+      // Extract echantillon ID properly
+      const echantillonId = analyseInitial.echantillon && 
+        (typeof analyseInitial.echantillon === 'string' 
+          ? analyseInitial.echantillon 
+          : analyseInitial.echantillon._id);
+      
+      const payload: any = {
         numero: data.numero ?? analyseInitial.numero,
         nom: data.nom ?? analyseInitial.nom,
         type: data.type ?? analyseInitial.type,
         categorie: data.categorie ?? analyseInitial.categorie,
         statut: data.statut ?? analyseInitial.statut,
         datePlanification: data.datePlanification ?? analyseInitial.datePlanification,
-        echantillon:
-          (analyseInitial.echantillon && (analyseInitial.echantillon._id || analyseInitial.echantillon)) || undefined,
-        ...(data.valeur || data.unite
-          ? {
-              resultats: {
-                valeur: data.valeur ? parseFloat(data.valeur) : analyseInitial.resultats?.valeur,
-                unite: data.unite ?? analyseInitial.resultats?.unite,
-                statut: data.statut ?? analyseInitial.resultats?.statut
-              }
-            }
-          : {})
       };
+
+      // Only include echantillon if we have a valid ID
+      if (echantillonId) {
+        payload.echantillon = echantillonId;
+      }
+
+      // Include resultats if we have values
+      if (data.valeur !== undefined || data.unite) {
+        payload.resultats = {
+          valeur: data.valeur !== undefined ? parseFloat(data.valeur) : analyseInitial.resultats?.valeur,
+          unite: data.unite ?? analyseInitial.resultats?.unite,
+          statut: data.statut ?? analyseInitial.resultats?.statut
+        };
+      }
 
       await analyseService.update(analyseInitial._id, payload);
       setIsAnalyseModalOpen(false);
@@ -456,14 +472,13 @@ const Laboratoire: React.FC<LaboratoireProps> = ({ activeTab: initialTab = 'echa
       await loadData();
     } catch (e) {
       console.error(e);
+      alert('Erreur lors de la mise à jour de l\'analyse. Vérifiez les données.');
     }
   };
 
   // Création / Mise à jour Plan de contrôle
   const createPlanControle = async (data: any) => {
     try {
-      const token = localStorage.getItem('qhse-token')?.replace(/^"|"$/g, '');
-      
       // Le backend génère automatiquement le numéro si pas fourni
       // et assigne le responsable depuis req.user
       const payload = {
@@ -472,6 +487,7 @@ const Laboratoire: React.FC<LaboratoireProps> = ({ activeTab: initialTab = 'echa
         // Le responsable sera assigné automatiquement par le backend depuis req.user
       };
       
+      console.log('Sending plan de controle data:', payload);
       await planControleService.create(payload);
       
       setIsPlanControleModalOpen(false);
@@ -480,15 +496,22 @@ const Laboratoire: React.FC<LaboratoireProps> = ({ activeTab: initialTab = 'echa
       await loadData();
       alert('Plan de contrôle créé avec succès !');
     } catch (e: any) {
-      console.error(e);
-      alert(`Erreur: ${e.message}`);
+      console.error('Error creating plan de controle:', e);
+      const errorMessage = e.response?.data?.message || e.message || 'Erreur inconnue';
+      const errorDetails = e.response?.data?.details;
+      
+      if (errorDetails && Array.isArray(errorDetails)) {
+        const fieldErrors = errorDetails.map((d: any) => `${d.field}: ${d.message}`).join('\n');
+        alert(`Erreur lors de la création du plan de contrôle:\n${errorMessage}\n\nDétails:\n${fieldErrors}`);
+      } else {
+        alert(`Erreur lors de la création du plan de contrôle:\n${errorMessage}`);
+      }
     }
   };
 
   const updatePlanControle = async (data: any) => {
     try {
       if (!planInitial?._id) return;
-      const token = localStorage.getItem('qhse-token')?.replace(/^"|"$/g, '');
       const payload = {
         numero: data.numero ?? planInitial.numero,
         nom: data.nom ?? planInitial.nom,
@@ -795,17 +818,14 @@ const Laboratoire: React.FC<LaboratoireProps> = ({ activeTab: initialTab = 'echa
                                   title: "Supprimer l'échantillon",
                                   message: 'Cette action est irréversible.',
                                   onConfirm: async () => {
-                                    const token = localStorage.getItem('qhse-token')?.replace(/^"|"$/g, '');
-                                    const res = await fetch(`/api/laboratoire/echantillons/${echantillon._id}`, {
-                                      method: 'DELETE',
-                                      headers: {
-                                        'Content-Type': 'application/json',
-                                        ...(token ? { Authorization: `Bearer ${token}` } : {})
-                                      }
-                                    });
-                                    setConfirmState(s => ({...s, open:false}));
-                                    if (!res.ok) return;
-                                    await loadData();
+                                    try {
+                                      await echantillonService.delete(echantillon._id);
+                                      setConfirmState(s => ({...s, open:false}));
+                                      await loadData();
+                                    } catch (error) {
+                                      console.error('Erreur lors de la suppression:', error);
+                                      setConfirmState(s => ({...s, open:false}));
+                                    }
                                   }
                                 })
                               }}
@@ -911,17 +931,14 @@ const Laboratoire: React.FC<LaboratoireProps> = ({ activeTab: initialTab = 'echa
                                 title: "Supprimer l'analyse",
                                 message: 'Cette action est irréversible.',
                                 onConfirm: async () => {
-                                  const token = localStorage.getItem('qhse-token')?.replace(/^"|"$/g, '');
-                                  const res = await fetch(`/api/laboratoire/analyses/${analyse._id}`, {
-                                    method: 'DELETE',
-                                    headers: {
-                                      'Content-Type': 'application/json',
-                                      ...(token ? { Authorization: `Bearer ${token}` } : {})
-                                    }
-                                  });
-                                  setConfirmState(s => ({...s, open:false}));
-                                  if (!res.ok) return;
-                                  await loadData();
+                                  try {
+                                    await analyseService.delete(analyse._id);
+                                    setConfirmState(s => ({...s, open:false}));
+                                    await loadData();
+                                  } catch (error) {
+                                    console.error('Erreur lors de la suppression:', error);
+                                    setConfirmState(s => ({...s, open:false}));
+                                  }
                                 }
                               })
                             }}>
@@ -981,17 +998,14 @@ const Laboratoire: React.FC<LaboratoireProps> = ({ activeTab: initialTab = 'echa
                                 title: 'Supprimer le plan de contrôle',
                                 message: 'Cette action est irréversible.',
                                 onConfirm: async () => {
-                                  const token = localStorage.getItem('qhse-token')?.replace(/^"|"$/g, '');
-                                  const res = await fetch(`/api/laboratoire/plans-controle/${plan._id}`, {
-                                    method: 'DELETE',
-                                    headers: {
-                                      'Content-Type': 'application/json',
-                                      ...(token ? { Authorization: `Bearer ${token}` } : {})
-                                    }
-                                  });
-                                  setConfirmState(s => ({...s, open:false}));
-                                  if (!res.ok) return;
-                                  await loadData();
+                                  try {
+                                    await planControleService.delete(plan._id);
+                                    setConfirmState(s => ({...s, open:false}));
+                                    await loadData();
+                                  } catch (error) {
+                                    console.error('Erreur lors de la suppression:', error);
+                                    setConfirmState(s => ({...s, open:false}));
+                                  }
                                 }
                               })
                             }}>

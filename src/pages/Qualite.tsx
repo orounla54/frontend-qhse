@@ -18,7 +18,12 @@ import {
   controleQualiteService, 
   nonConformiteService,
   auditQualiteService,
-  decisionQualiteService
+  decisionQualiteService,
+  planControleService,
+  tracabiliteService,
+  conformiteService,
+  analyseService,
+  echantillonService
 } from '../services/qualiteService';
 import { 
   CheckCircle, 
@@ -250,18 +255,34 @@ const Qualite: React.FC<QualiteProps> = ({ activeTab: initialTab = 'matieres-pre
     if (!confirm('Êtes-vous sûr de vouloir supprimer cet élément ?')) return;
     
     try {
-      const token = localStorage.getItem('qhse-token')?.replace(/^"|"$/g, '');
-      const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-      
-      const endpoint = `/api/qualite/${type}/${itemId}`;
-      const response = await fetch(endpoint, {
-        method: 'DELETE',
-        headers: authHeaders
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Suppression échouée');
+      // Utiliser les services appropriés selon le type
+      switch(type) {
+        case 'matieres-premieres':
+          await matierePremiereService.delete(itemId);
+          break;
+        case 'controles-qualite':
+          await controleQualiteService.delete(itemId);
+          break;
+        case 'non-conformites':
+          await nonConformiteService.delete(itemId);
+          break;
+        case 'decisions-qualite':
+          await decisionQualiteService.delete(itemId);
+          break;
+        case 'audits':
+          await auditQualiteService.delete(itemId);
+          break;
+        case 'plans-controle':
+          await planControleService.delete(itemId);
+          break;
+        case 'tracabilite':
+          await tracabiliteService.delete(itemId);
+          break;
+        case 'conformite':
+          await conformiteService.delete(itemId);
+          break;
+        default:
+          throw new Error(`Type ${type} non supporté`);
       }
       
       addNotification('success', 'Élément supprimé avec succès');
@@ -288,66 +309,80 @@ const Qualite: React.FC<QualiteProps> = ({ activeTab: initialTab = 'matieres-pre
   const loadData = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('qhse-token')?.replace(/^"|"$/g, '');
-      const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-      const queryParams = buildQueryParams();
+      const params = {
+        search: searchTerm,
+        statut: filterStatut,
+        type: filterType,
+        gravite: filterGravite,
+        sortBy,
+        sortOrder,
+        page: currentPage.toString(),
+        limit: '10'
+      };
+      
+      console.log(`📊 Loading data for tab: ${activeTab}`, params);
       
       if (activeTab === 'matieres-premieres') {
-        const response = await fetch(`/api/qualite/matieres-premieres?${queryParams}`, { headers: authHeaders });
-        const data = await response.json();
-        setMatieresPremieres(data.matieresPremieres || []);
+        const response = await matierePremiereService.getAll(params);
+        const data = response.data;
+        setMatieresPremieres(data.items || data.matieresPremieres || []);
         setTotalPages(data.totalPages || 1);
         setTotal(data.total || 0);
       } else if (activeTab === 'controles-qualite') {
-        const response = await fetch(`/api/qualite/controles-qualite?${queryParams}`, { headers: authHeaders });
-        const data = await response.json();
-        setControlesQualite(data.controles || []);
+        const response = await controleQualiteService.getAll(params);
+        const data = response.data;
+        setControlesQualite(data.items || data.controles || []);
         setTotalPages(data.totalPages || 1);
         setTotal(data.total || 0);
       } else if (activeTab === 'non-conformites') {
-        const response = await fetch(`/api/qualite/non-conformites?${queryParams}`, { headers: authHeaders });
-        const data = await response.json();
-        setNonConformites(data.nonConformites || []);
+        const response = await nonConformiteService.getAll(params);
+        const data = response.data;
+        setNonConformites(data.items || data.nonConformites || []);
         setTotalPages(data.totalPages || 1);
         setTotal(data.total || 0);
       } else if (activeTab === 'decisions-qualite') {
-        const response = await fetch(`/api/qualite/decisions-qualite?${queryParams}`, { headers: authHeaders });
-        const data = await response.json();
-        setDecisionsQualite(data.decisions || []);
+        const response = await decisionQualiteService.getAll(params);
+        const data = response.data;
+        setDecisionsQualite(data.items || data.decisions || []);
+        setTotalPages(data.totalPages || 1);
+        setTotal(data.total || 0);
+      } else if (activeTab === 'plans-controle') {
+        const response = await planControleService.getAll(params);
+        const data = response.data;
+        setPlans(data.items || data.plans || []);
         setTotalPages(data.totalPages || 1);
         setTotal(data.total || 0);
       } else if (activeTab === 'audits') {
-        const response = await fetch(`/api/qualite/audits?${queryParams}`, { headers: authHeaders });
-        const data = await response.json();
-        setAudits(data.audits || []);
+        const response = await auditQualiteService.getAll(params);
+        const data = response.data;
+        setAudits(data.items || data.audits || []);
         setTotalPages(data.totalPages || 1);
         setTotal(data.total || 0);
       } else if (activeTab === 'conformite') {
-        const response = await fetch(`/api/qualite/conformite?${queryParams}`, { headers: authHeaders });
-        const data = await response.json();
-        const mapped = (data.conformites || []).map((c: any) => ({
-          _id: c._id,
-          numero: c.numero,
-          titre: c.titre,
-          type: c.type,
-          statut: c.statutConformite,
-          dateEvaluation: c.derniereEvaluation?.date,
-          evaluateur: c.derniereEvaluation?.evaluateur || { nom: '', prenom: '' },
-          score: typeof c.scoreConformite === 'number' ? c.scoreConformite : 0,
-          exigences: Array.isArray(c.obligations) ? c.obligations : []
-        }));
-        setConformites(mapped);
+        const response = await conformiteService.getAll(params);
+        const data = response.data;
+        setConformites(data.items || data.conformites || []);
         setTotalPages(data.totalPages || 1);
         setTotal(data.total || 0);
       } else if (activeTab === 'tracabilite') {
-        const response = await fetch(`/api/qualite/tracabilite?${queryParams}`, { headers: authHeaders });
-        const data = await response.json();
-        setTracabilites(data.tracabilites || []);
+        const response = await tracabiliteService.getAll(params);
+        const data = response.data;
+        setTracabilites(data.items || data.tracabilites || []);
         setTotalPages(data.totalPages || 1);
         setTotal(data.total || 0);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors du chargement des données:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      
+      // Handle HTML response (likely an error page)
+      if (error.response?.data && typeof error.response.data === 'string' && error.response.data.includes('<!DOCTYPE')) {
+        console.error('Received HTML instead of JSON - likely a server error page');
+        addNotification('error', 'Erreur serveur - Veuillez réessayer plus tard');
+      } else {
+        addNotification('error', error.message || 'Erreur lors du chargement des données');
+      }
     } finally {
       setLoading(false);
     }
@@ -404,7 +439,6 @@ const Qualite: React.FC<QualiteProps> = ({ activeTab: initialTab = 'matieres-pre
 
   const createControleQualite = async (data: any) => {
     try {
-      const token = localStorage.getItem('qhse-token')?.replace(/^"|"$/g, '');
       // Adapter le payload du modal au schéma backend ControleQualite
       const titre = data?.titre && String(data.titre).trim().length > 0
         ? data.titre
@@ -441,18 +475,7 @@ const Qualite: React.FC<QualiteProps> = ({ activeTab: initialTab = 'matieres-pre
         statut: data?.resultat === 'Conforme' ? 'Terminé' : 'En cours'
       };
 
-      const res = await fetch('/api/qualite/controles-qualite', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || 'Création échouée');
-      }
+      await controleQualiteService.create(payload);
       addNotification('success', 'Contrôle qualité créé avec succès');
       setIsCtrlModalOpen(false);
       await loadData();
@@ -465,7 +488,6 @@ const Qualite: React.FC<QualiteProps> = ({ activeTab: initialTab = 'matieres-pre
   // Gestionnaires de création pour tous les modals
   const createPlanControle = async (data: any) => {
     try {
-      const token = localStorage.getItem('qhse-token')?.replace(/^"|"$/g, '');
       // Adapter le payload au schéma backend PlanControle
       const payload = {
         numero: data?.numero && String(data.numero).trim().length > 0 ? data.numero : `PC-${Date.now()}`,
@@ -505,18 +527,7 @@ const Qualite: React.FC<QualiteProps> = ({ activeTab: initialTab = 'matieres-pre
         })) : []
       };
 
-      const res = await fetch('/api/qualite/plans-controle', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || 'Création échouée');
-      }
+      await planControleService.create(payload);
       addNotification('success', 'Plan de contrôle créé avec succès');
       setIsPlanControleModalOpen(false);
       await loadData();
@@ -529,7 +540,6 @@ const Qualite: React.FC<QualiteProps> = ({ activeTab: initialTab = 'matieres-pre
 
   const createTracabilite = async (data: any) => {
     try {
-      const token = localStorage.getItem('qhse-token')?.replace(/^"|"$/g, '');
       // Adapter le payload au schéma backend Tracabilite
       const payload = {
         numero: data?.numero && String(data.numero).trim().length > 0 ? data.numero : `TR-${Date.now()}`,
@@ -563,18 +573,7 @@ const Qualite: React.FC<QualiteProps> = ({ activeTab: initialTab = 'matieres-pre
         documents: data?.documents || []
       };
 
-      const res = await fetch('/api/qualite/tracabilite', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || 'Création échouée');
-      }
+      await tracabiliteService.create(payload);
       addNotification('success', 'Fiche traçabilité créée avec succès');
       setIsTracabiliteModalOpen(false);
       setTracabiliteMode('view');
@@ -587,8 +586,6 @@ const Qualite: React.FC<QualiteProps> = ({ activeTab: initialTab = 'matieres-pre
 
   const createConformite = async (data: any) => {
     try {
-      const token = localStorage.getItem('qhse-token')?.replace(/^"|"$/g, '');
-      
       // Payload minimal et sûr pour éviter les erreurs de validation
       const payload = {
         numero: `CONF-${Date.now()}`,
@@ -600,23 +597,8 @@ const Qualite: React.FC<QualiteProps> = ({ activeTab: initialTab = 'matieres-pre
 
       console.log('📤 Payload envoyé:', JSON.stringify(payload, null, 2));
 
-      const res = await fetch('/api/qualite/conformite', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify(payload)
-      });
-      
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error('❌ Erreur backend:', res.status, errorText);
-        throw new Error(`Erreur ${res.status}: ${errorText}`);
-      }
-      
-      const result = await res.json();
-      console.log('✅ Conformité créée:', result);
+      const result = await conformiteService.create(payload);
+      console.log('✅ Conformité créée:', result.data);
       
       addNotification('success', 'Conformité créée avec succès');
       setIsConformiteModalOpen(false);
@@ -629,7 +611,6 @@ const Qualite: React.FC<QualiteProps> = ({ activeTab: initialTab = 'matieres-pre
 
   const createAuditQualite = async (data: any) => {
     try {
-      const token = localStorage.getItem('qhse-token')?.replace(/^"|"$/g, '');
       // Adapter le payload au schéma backend Audit
       const payload = {
         numero: data?.numero && String(data.numero).trim().length > 0 ? data.numero : `AUD-${Date.now()}`,
@@ -652,18 +633,7 @@ const Qualite: React.FC<QualiteProps> = ({ activeTab: initialTab = 'matieres-pre
         documents: data?.documents || []
       };
 
-      const res = await fetch('/api/qualite/audits', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || 'Création échouée');
-      }
+      await auditQualiteService.create(payload);
       addNotification('success', 'Audit qualité créé avec succès');
       setIsAuditQualiteModalOpen(false);
       await loadData();
@@ -675,19 +645,7 @@ const Qualite: React.FC<QualiteProps> = ({ activeTab: initialTab = 'matieres-pre
 
   const createReceptionLot = async (data: any) => {
     try {
-      const token = localStorage.getItem('qhse-token')?.replace(/^"|"$/g, '');
-      const res = await fetch(`/api/qualite/matieres-premieres/${selectedItem._id}/lots`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify(data)
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || 'Création échouée');
-      }
+      await matierePremiereService.addLot(selectedItem._id, data);
       addNotification('success', 'Lot créé avec succès');
       setIsReceptionLotModalOpen(false);
       await loadData();
@@ -699,7 +657,6 @@ const Qualite: React.FC<QualiteProps> = ({ activeTab: initialTab = 'matieres-pre
 
   const createNonConformite = async (data: any) => {
     try {
-      const token = localStorage.getItem('qhse-token')?.replace(/^"|"$/g, '');
       // Adapter le payload du modal au schéma backend NonConformite
       const payload = {
         numero: data?.numero && String(data.numero).trim().length > 0 ? data.numero : `NC-${Date.now()}`,
@@ -734,18 +691,7 @@ const Qualite: React.FC<QualiteProps> = ({ activeTab: initialTab = 'matieres-pre
         priorite: 'Normale'
       };
 
-      const res = await fetch('/api/qualite/non-conformites', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || 'Création échouée');
-      }
+      await nonConformiteService.create(payload);
       addNotification('success', 'Non-conformité créée avec succès');
       setIsNcModalOpen(false);
       await loadData();
@@ -757,7 +703,6 @@ const Qualite: React.FC<QualiteProps> = ({ activeTab: initialTab = 'matieres-pre
 
   const createDecisionQualite = async (data: any) => {
     try {
-      const token = localStorage.getItem('qhse-token')?.replace(/^"|"$/g, '');
       // Adapter le payload du modal au schéma backend DecisionQualite
       const payload = {
         numero: data?.numero && String(data.numero).trim().length > 0 ? data.numero : `DQ-${Date.now()}`,
@@ -781,18 +726,7 @@ const Qualite: React.FC<QualiteProps> = ({ activeTab: initialTab = 'matieres-pre
         statut: 'En attente'
       };
 
-      const res = await fetch('/api/qualite/decisions-qualite', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || 'Création échouée');
-      }
+      await decisionQualiteService.create(payload);
       addNotification('success', 'Décision qualité créée avec succès');
       setIsDecisionModalOpen(false);
       await loadData();
@@ -1393,6 +1327,82 @@ const Qualite: React.FC<QualiteProps> = ({ activeTab: initialTab = 'matieres-pre
                             </button>
                             <button className="text-red-600 hover:text-red-900">
                               <Trash2 className="h-4 w-4" onClick={() => handleDelete(decision._id, 'decisions-qualite')} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {activeTab === 'plans-controle' && (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead className="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Plan de Contrôle
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Type
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Produit
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Fréquence
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Statut
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Version
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {plans.map((plan) => (
+                      <tr key={plan._id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900 dark:text-white">
+                            {plan.numero}
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            {plan.nom}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                          {plan.type}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                          {plan.concerne?.nom || '—'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                          {plan.frequence}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatutColor(plan.statut)}`}>
+                            {plan.statut}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          {plan.version?.numero || '1.0'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex items-center space-x-2">
+                            <button className="text-primary-600 hover:text-primary-900">
+                              <Eye className="h-4 w-4" />
+                            </button>
+                            <button className="text-gray-600 hover:text-gray-900">
+                              <Edit className="h-4 w-4" />
+                            </button>
+                            <button className="text-red-600 hover:text-red-900">
+                              <Trash2 className="h-4 w-4" onClick={() => handleDelete(plan._id, 'plans-controle')} />
                             </button>
                           </div>
                         </td>

@@ -59,7 +59,11 @@ const ModalEchantillon: React.FC<ModalProps<any>> = ({ isOpen, onClose, onSave, 
       },
       typeEchantillon: form.typeEchantillon,
       prelevement: {
-        date: form.datePrelevement
+        date: form.datePrelevement,
+        responsable: {
+          nom: form.responsableNom,
+          prenom: form.responsablePrenom
+        }
       },
       resultats: {
         conformite: form.conformite

@@ -223,6 +223,32 @@ const ModalPlanControle: React.FC<ModalProps<any>> = ({
 
   if (!isOpen) return null;
 
+  const validateForm = () => {
+    if (!form.nom || form.nom.trim() === '') {
+      alert('Le nom du plan est obligatoire');
+      return false;
+    }
+    if (!form.type || form.type.trim() === '') {
+      alert('Le type de plan est obligatoire');
+      return false;
+    }
+    if (!form.concerne.type || form.concerne.type.trim() === '') {
+      alert('Le type concerné est obligatoire');
+      return false;
+    }
+    if (!form.frequence || form.frequence.trim() === '') {
+      alert('La fréquence est obligatoire');
+      return false;
+    }
+    return true;
+  };
+
+  const handleSubmit = () => {
+    if (validateForm() && onSave) {
+      onSave(form);
+    }
+  };
+
   const typesControle = [
     'Visuel', 'Organoleptique', 'Physico-chimique', 'Microbiologique', 'Mesure', 'Test', 'Vérification'
   ];
@@ -733,7 +759,7 @@ const ModalPlanControle: React.FC<ModalProps<any>> = ({
           </button>
           <button
             type="submit"
-            onClick={() => onSave && onSave(form)}
+            onClick={handleSubmit}
             className="px-4 py-2 rounded-md bg-primary-600 text-white hover:bg-primary-700"
           >
             {mode === 'create' ? 'Créer plan' : 'Mettre à jour'}

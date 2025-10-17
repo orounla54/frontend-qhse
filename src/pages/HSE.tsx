@@ -32,6 +32,15 @@ import ModalProduitChimique from '../components/features/ModalProduitChimique';
 import ModalIncident from '../components/features/ModalIncident';
 import ModalRisque from '../components/features/ModalRisque';
 import ModalFormation from '../components/features/ModalFormation';
+import { 
+  hygieneService, 
+  epiService, 
+  produitChimiqueService,
+  hseStatsService,
+  incidentService,
+  risqueService,
+  formationService
+} from '../services/hseService';
 
 interface Hygiene {
   _id: string;
@@ -291,67 +300,44 @@ const HSE: React.FC<HSEProps> = ({ activeTab: initialTab = 'hygiene' }) => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('qhse-token')?.replace(/^"|"$/g, '');
-      const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-
       if (activeTab === 'hygiene') {
-        const response = await fetch('/api/hygiene', {
-          headers: {
-            'Content-Type': 'application/json',
-            ...authHeaders
-          }
-        });
-        const data = await response.json();
-        setHygiene(data.hygiene || []);
+        const response = await hygieneService.getAll();
+        const data = response.data;
+        setHygiene(data.items || data.hygiene || data || []);
       } else if (activeTab === 'epi') {
-        const response = await fetch('/api/hse/epi', {
-          headers: {
-            'Content-Type': 'application/json',
-            ...authHeaders
-          }
-        });
-        const data = await response.json();
-        setEpi(data.epi || []);
+        const response = await epiService.getAll();
+        const data = response.data;
+        setEpi(data.items || data.epi || data || []);
       } else if (activeTab === 'produits-chimiques') {
-        const response = await fetch('/api/hse/produits-chimiques', {
-          headers: {
-            'Content-Type': 'application/json',
-            ...authHeaders
-          }
-        });
-        const data = await response.json();
+        const response = await produitChimiqueService.getAll();
+        const data = response.data;
         console.log('Données produits chimiques chargées:', data);
-        setProduitsChimiques(data.produits || []);
+        setProduitsChimiques(data.items || data.produits || data.produitsChimiques || data || []);
       } else if (activeTab === 'incidents') {
-        const response = await fetch('/api/hse/incidents', {
-          headers: {
-            'Content-Type': 'application/json',
-            ...authHeaders
-          }
-        });
-        const data = await response.json();
-        setIncidents(data.incidents || []);
+        const response = await incidentService.getAll();
+        const data = response.data;
+        setIncidents(data.items || data.incidents || data || []);
       } else if (activeTab === 'risques') {
-        const response = await fetch('/api/hse/risques', {
-          headers: {
-            'Content-Type': 'application/json',
-            ...authHeaders
-          }
-        });
-        const data = await response.json();
-        setRisques(data.risques || []);
+        const response = await risqueService.getAll();
+        const data = response.data;
+        setRisques(data.items || data.risques || data || []);
       } else if (activeTab === 'formations') {
-        const response = await fetch('/api/hse/formations', {
-          headers: {
-            'Content-Type': 'application/json',
-            ...authHeaders
-          }
-        });
-        const data = await response.json();
-        setFormations(data.formations || []);
+        const response = await formationService.getAll();
+        const data = response.data;
+        setFormations(data.items || data.formations || data || []);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors du chargement des données:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      
+      // Handle HTML response (likely an error page)
+      if (error.response?.data && typeof error.response.data === 'string' && error.response.data.includes('<!DOCTYPE')) {
+        console.error('Received HTML instead of JSON - likely a server error page');
+        alert('Erreur serveur - Veuillez réessayer plus tard');
+      } else {
+        alert('Erreur lors du chargement des données: ' + (error.message || 'Erreur inconnue'));
+      }
     } finally {
       setLoading(false);
     }
@@ -404,30 +390,18 @@ const HSE: React.FC<HSEProps> = ({ activeTab: initialTab = 'hygiene' }) => {
   const loadStatistiques = async () => {
     setStatistiquesLoading(true);
     try {
-      const token = localStorage.getItem('qhse-token')?.replace(/^"|"$/g, '');
-      const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-
-      const params = new URLSearchParams();
-      if (dateDebut) params.append('dateDebut', dateDebut);
-      if (dateFin) params.append('dateFin', dateFin);
-      params.append('periode', 'mois'); // Période par défaut
-
-      // Utiliser le nouvel endpoint unifié du tableau de bord
-      const response = await fetch(`/api/hse/dashboard?${params}`, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...authHeaders
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Données du tableau de bord reçues:', data);
-        setStatistiques(data);
+      // Utiliser hseStatsService pour obtenir les statistiques
+      const params: any = {};
+      if (dateDebut && dateFin) {
+        params.periode = `${dateDebut}_${dateFin}`;
       } else {
-        console.error('Erreur lors du chargement des statistiques:', response.statusText);
-        console.error('Status:', response.status);
+        params.periode = 'mois'; // Période par défaut
       }
+      
+      const response = await hseStatsService.getStats(params.periode);
+      
+      console.log('Données du tableau de bord reçues:', response.data);
+      setStatistiques(response.data);
     } catch (error) {
       console.error('Erreur lors du chargement des statistiques:', error);
     } finally {
@@ -499,299 +473,128 @@ const HSE: React.FC<HSEProps> = ({ activeTab: initialTab = 'hygiene' }) => {
   const handleDelete = async (item: any) => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer cet élément ?')) {
       try {
-        const token = localStorage.getItem('qhse-token')?.replace(/^"|"$/g, '');
-        const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-
-        let endpoint = '';
-        if (activeTab === 'hygiene') {
-          endpoint = `/api/hygiene/${item._id}`;
-        } else if (activeTab === 'epi') {
-          endpoint = `/api/hse/epi/${item._id}`;
-        } else if (activeTab === 'produits-chimiques') {
-          endpoint = `/api/hse/produits-chimiques/${item._id}`;
-        } else if (activeTab === 'incidents') {
-          endpoint = `/api/hse/incidents/${item._id}`;
-        } else if (activeTab === 'risques') {
-          endpoint = `/api/hse/risques/${item._id}`;
-        } else if (activeTab === 'formations') {
-          endpoint = `/api/hse/formations/${item._id}`;
+        // Utiliser les services appropriés selon le type
+        switch(activeTab) {
+          case 'hygiene':
+            await hygieneService.delete(item._id);
+            break;
+          case 'epi':
+            await epiService.delete(item._id);
+            break;
+          case 'produits-chimiques':
+            await produitChimiqueService.delete(item._id);
+            break;
+          case 'incidents':
+            await incidentService.delete(item._id);
+            break;
+          case 'risques':
+            await risqueService.delete(item._id);
+            break;
+          case 'formations':
+            await formationService.delete(item._id);
+            break;
+          default:
+            throw new Error(`Type ${activeTab} non supporté`);
         }
-
-        if (endpoint) {
-          const response = await fetch(endpoint, {
-            method: 'DELETE',
-            headers: {
-              'Content-Type': 'application/json',
-              ...authHeaders
-            }
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Erreur lors de la suppression');
-          }
-
-          console.log('Élément supprimé avec succès');
-          // Recharger les données après suppression
-          loadData();
-        }
-      } catch (error) {
+        
+        console.log('Élément supprimé avec succès');
+        alert('Élément supprimé avec succès');
+        // Recharger les données après suppression
+        loadData();
+      } catch (error: any) {
         console.error('Erreur lors de la suppression:', error);
-        alert('Erreur lors de la suppression: ' + (error instanceof Error ? error.message : 'Erreur inconnue'));
+        alert('Erreur lors de la suppression: ' + (error.message || 'Erreur inconnue'));
       }
     }
   };
 
   const handleModalSubmit = async (data: any) => {
     try {
-      const token = localStorage.getItem('qhse-token')?.replace(/^"|"$/g, '');
-      const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-
       if (activeTab === 'hygiene') {
         if (modalMode === 'create') {
           console.log('Données envoyées:', data);
-          
-          const response = await fetch('/api/hygiene', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...authHeaders
-            },
-            body: JSON.stringify(data)
-          });
-          
-          if (!response.ok) {
-            const errorData = await response.json();
-            console.error('Erreur serveur:', errorData);
-            throw new Error(errorData.message || 'Erreur lors de la création du contrôle d\'hygiène');
-          }
-          
-          const result = await response.json();
-          console.log('Contrôle d\'hygiène créé:', result);
+          const response = await hygieneService.create(data);
+          console.log('Contrôle d\'hygiène créé:', response.data);
+          alert('Contrôle d\'hygiène créé avec succès');
         } else if (modalMode === 'edit' && selectedItem) {
-          const response = await fetch(`/api/hygiene/${selectedItem._id}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              ...authHeaders
-            },
-            body: JSON.stringify(data)
-          });
-          
-          if (!response.ok) {
-            throw new Error('Erreur lors de la modification du contrôle d\'hygiène');
-          }
-          
-          const result = await response.json();
-          console.log('Contrôle d\'hygiène modifié:', result);
+          const response = await hygieneService.update(selectedItem._id, data);
+          console.log('Contrôle d\'hygiène modifié:', response.data);
+          alert('Contrôle d\'hygiène modifié avec succès');
         }
       } else if (activeTab === 'epi') {
         if (modalMode === 'create') {
           console.log('Données EPI envoyées:', data);
-          
-          const response = await fetch('/api/hse/epi', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...authHeaders
-            },
-            body: JSON.stringify(data)
-          });
-          
-          if (!response.ok) {
-            const errorData = await response.json();
-            console.error('Erreur serveur EPI:', errorData);
-            throw new Error(errorData.message || 'Erreur lors de la création de l\'EPI');
-          }
-          
-          const result = await response.json();
-          console.log('EPI créé:', result);
+          const response = await epiService.create(data);
+          console.log('EPI créé:', response.data);
+          alert('EPI créé avec succès');
         } else if (modalMode === 'edit' && selectedItem) {
-          const response = await fetch(`/api/hse/epi/${selectedItem._id}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              ...authHeaders
-            },
-            body: JSON.stringify(data)
-          });
-          
-          if (!response.ok) {
-            const errorData = await response.json();
-            console.error('Erreur serveur EPI:', errorData);
-            throw new Error(errorData.message || 'Erreur lors de la modification de l\'EPI');
-          }
-          
-          const result = await response.json();
-          console.log('EPI modifié:', result);
+          const response = await epiService.update(selectedItem._id, data);
+          console.log('EPI modifié:', response.data);
+          alert('EPI modifié avec succès');
         }
       } else if (activeTab === 'produits-chimiques') {
         if (modalMode === 'create') {
           console.log('Données produit chimique envoyées:', data);
-          
-          const response = await fetch('/api/hse/produits-chimiques', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...authHeaders
-            },
-            body: JSON.stringify(data)
-          });
-          
-          if (!response.ok) {
-            const errorData = await response.json();
-            console.error('Erreur serveur produit chimique:', errorData);
-            throw new Error(errorData.message || 'Erreur lors de la création du produit chimique');
-          }
-          
-          const result = await response.json();
-          console.log('Produit chimique créé:', result);
+          const response = await produitChimiqueService.create(data);
+          console.log('Produit chimique créé:', response.data);
+          alert('Produit chimique créé avec succès');
         } else if (modalMode === 'edit' && selectedItem) {
-          const response = await fetch(`/api/hse/produits-chimiques/${selectedItem._id}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              ...authHeaders
-            },
-            body: JSON.stringify(data)
-          });
-          
-          if (!response.ok) {
-            const errorData = await response.json();
-            console.error('Erreur serveur produit chimique:', errorData);
-            throw new Error(errorData.message || 'Erreur lors de la modification du produit chimique');
-          }
-          
-          const result = await response.json();
-          console.log('Produit chimique modifié:', result);
+          const response = await produitChimiqueService.update(selectedItem._id, data);
+          console.log('Produit chimique modifié:', response.data);
+          alert('Produit chimique modifié avec succès');
         }
       } else if (activeTab === 'incidents') {
         if (modalMode === 'create') {
           console.log('Données incident envoyées:', data);
-          
-          const response = await fetch('/api/hse/incidents', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...authHeaders
-            },
-            body: JSON.stringify(data)
-          });
-          
-          if (!response.ok) {
-            const errorData = await response.json();
-            console.error('Erreur serveur incident:', errorData);
-            throw new Error(errorData.message || 'Erreur lors de la création de l\'incident');
-          }
-          
-          const result = await response.json();
-          console.log('Incident créé:', result);
+          const response = await incidentService.create(data);
+          console.log('Incident créé:', response.data);
+          alert('Incident créé avec succès');
         } else if (modalMode === 'edit' && selectedItem) {
-          const response = await fetch(`/api/hse/incidents/${selectedItem._id}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              ...authHeaders
-            },
-            body: JSON.stringify(data)
-          });
-          
-          if (!response.ok) {
-            const errorData = await response.json();
-            console.error('Erreur serveur incident:', errorData);
-            throw new Error(errorData.message || 'Erreur lors de la modification de l\'incident');
-          }
-          
-          const result = await response.json();
-          console.log('Incident modifié:', result);
+          const response = await incidentService.update(selectedItem._id, data);
+          console.log('Incident modifié:', response.data);
+          alert('Incident modifié avec succès');
         }
       } else if (activeTab === 'risques') {
         if (modalMode === 'create') {
           console.log('Données risque envoyées:', data);
-          
-          const response = await fetch('/api/hse/risques', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...authHeaders
-            },
-            body: JSON.stringify(data)
-          });
-          
-          if (!response.ok) {
-            const errorData = await response.json();
-            console.error('Erreur serveur risque:', errorData);
-            throw new Error(errorData.message || 'Erreur lors de la création du risque');
-          }
-          
-          const result = await response.json();
-          console.log('Risque créé:', result);
+          const response = await risqueService.create(data);
+          console.log('Risque créé:', response.data);
+          alert('Risque créé avec succès');
         } else if (modalMode === 'edit' && selectedItem) {
-          const response = await fetch(`/api/hse/risques/${selectedItem._id}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              ...authHeaders
-            },
-            body: JSON.stringify(data)
-          });
-          
-          if (!response.ok) {
-            const errorData = await response.json();
-            console.error('Erreur serveur risque:', errorData);
-            throw new Error(errorData.message || 'Erreur lors de la modification du risque');
-          }
-          
-          const result = await response.json();
-          console.log('Risque modifié:', result);
+          const response = await risqueService.update(selectedItem._id, data);
+          console.log('Risque modifié:', response.data);
+          alert('Risque modifié avec succès');
         }
       } else if (activeTab === 'formations') {
         if (modalMode === 'create') {
           console.log('Données formation envoyées:', data);
-          
-          const response = await fetch('/api/hse/formations', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...authHeaders
-            },
-            body: JSON.stringify(data)
-          });
-          
-          if (!response.ok) {
-            const errorData = await response.json();
-            console.error('Erreur serveur formation:', errorData);
-            throw new Error(errorData.message || 'Erreur lors de la création de la formation');
-          }
-          
-          const result = await response.json();
-          console.log('Formation créée:', result);
+          const response = await formationService.create(data);
+          console.log('Formation créée:', response.data);
+          alert('Formation créée avec succès');
         } else if (modalMode === 'edit' && selectedItem) {
-          const response = await fetch(`/api/hse/formations/${selectedItem._id}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              ...authHeaders
-            },
-            body: JSON.stringify(data)
-          });
-          
-          if (!response.ok) {
-            const errorData = await response.json();
-            console.error('Erreur serveur formation:', errorData);
-            throw new Error(errorData.message || 'Erreur lors de la modification de la formation');
-          }
-          
-          const result = await response.json();
-          console.log('Formation modifiée:', result);
+          const response = await formationService.update(selectedItem._id, data);
+          console.log('Formation modifiée:', response.data);
+          alert('Formation modifiée avec succès');
         }
       }
       
-      // Recharger les données après création/modification
+      // Fermer le modal et recharger les données après création/modification
+      setShowModal(false);
+      setSelectedItem(null);
       loadData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors de la soumission:', error);
-      alert('Erreur lors de la sauvegarde: ' + (error instanceof Error ? error.message : 'Erreur inconnue'));
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      
+      // Handle HTML response (likely an error page)
+      if (error.response?.data && typeof error.response.data === 'string' && error.response.data.includes('<!DOCTYPE')) {
+        console.error('Received HTML instead of JSON - likely a server error page');
+        alert('Erreur serveur - Veuillez réessayer plus tard');
+      } else {
+        const errorMessage = error.response?.data?.message || error.message || 'Erreur inconnue';
+        alert('Erreur lors de la sauvegarde: ' + errorMessage);
+      }
     }
   };
 

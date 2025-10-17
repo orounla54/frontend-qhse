@@ -88,9 +88,57 @@ export const decisionQualiteService = {
   valider: (id: string, data: any) => api.post(`/decisions-qualite/${id}/valider`, data),
 };
 
+// Services pour les plans de contrôle
+export const planControleService = {
+  getAll: (params?: any) => api.get('/plans-controle', { params }),
+  getById: (id: string) => api.get(`/plans-controle/${id}`),
+  create: (data: any) => api.post('/plans-controle', data),
+  update: (id: string, data: any) => api.put(`/plans-controle/${id}`, data),
+  delete: (id: string) => api.delete(`/plans-controle/${id}`),
+  activer: (id: string) => api.post(`/plans-controle/${id}/activer`),
+};
+
+// Services pour la traçabilité
+export const tracabiliteService = {
+  getAll: (params?: any) => api.get('/tracabilite', { params }),
+  getById: (id: string) => api.get(`/tracabilite/${id}`),
+  create: (data: any) => api.post('/tracabilite', data),
+  update: (id: string, data: any) => api.put(`/tracabilite/${id}`, data),
+  delete: (id: string) => api.delete(`/tracabilite/${id}`),
+};
+
+// Services pour la conformité
+export const conformiteService = {
+  getAll: (params?: any) => api.get('/conformite', { params }),
+  getById: (id: string) => api.get(`/conformite/${id}`),
+  create: (data: any) => api.post('/conformite', data),
+  update: (id: string, data: any) => api.put(`/conformite/${id}`, data),
+  delete: (id: string) => api.delete(`/conformite/${id}`),
+};
+
+// Services pour les analyses
+export const analyseService = {
+  getAll: (params?: any) => api.get('/analyses', { params }),
+  getById: (id: string) => api.get(`/analyses/${id}`),
+  create: (data: any) => api.post('/analyses', data),
+  update: (id: string, data: any) => api.put(`/analyses/${id}`, data),
+  delete: (id: string) => api.delete(`/analyses/${id}`),
+};
+
+// Services pour les échantillons
+export const echantillonService = {
+  getAll: (params?: any) => api.get('/echantillons', { params }),
+  getById: (id: string) => api.get(`/echantillons/${id}`),
+  create: (data: any) => api.post('/echantillons', data),
+  update: (id: string, data: any) => api.put(`/echantillons/${id}`, data),
+  delete: (id: string) => api.delete(`/echantillons/${id}`),
+};
+
 // Services pour les statistiques qualité
 export const qualiteStatsService = {
   getStats: (periode?: string) => api.get('/stats', { params: { periode } }),
 };
 
 export default api;
+
+

@@ -50,20 +50,8 @@ const ModalAnalyse: React.FC<ModalProps<any>> = ({ isOpen, onClose, onSave, init
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const analyseData = {
-      ...form,
-      echantillon: {
-        numero: form.echantillonNumero,
-        numeroLot: form.echantillonNumeroLot
-      },
-      resultats: {
-        valeur: parseFloat(form.valeur) || 0,
-        unite: form.unite,
-        statut: form.statut
-      },
-      datePlanification: form.datePlanification
-    };
-    onSave?.(analyseData);
+    // Pass the flat form data, let the parent handle the structure
+    onSave?.(form);
   };
 
   if (!isOpen) return null;

@@ -169,3 +169,5 @@ Pour chaque page :
 2. Remplacer les appels fetch par les méthodes du service
 3. Tester la fonctionnalité
 4. Commit et push
+
+
